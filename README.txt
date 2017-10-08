@@ -9,3 +9,6 @@
    http://brettbeauregard.com/blog/2011/04/improving-the-beginners-pid-introduction/
 
  - For function documentation see:  http://playground.arduino.cc/Code/PIDLibrary
+ 
+ - This version has the following changes:
+   1.Added a getter method for the field lastTime.
