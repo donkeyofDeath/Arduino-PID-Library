@@ -59,7 +59,7 @@ class PID
 	double GetKd();						  // where it's important to know what is actually 
 	int GetMode();						  //  inside the PID.
 	int GetDirection();					  //
-	unsigned long GetLastTime();          			  // Added by Tobias Liebmann 08/10/2017 
+	unsigned long GetLastTime();          			  // Added by Tobias Liebmann 10/08/2017 
   private:
 	void Initialize();
 	
