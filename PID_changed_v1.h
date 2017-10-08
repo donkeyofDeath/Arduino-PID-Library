@@ -1,5 +1,5 @@
-#ifndef PID_v1_h
-#define PID_v1_h
+#ifndef PID_v1_changed_h
+#define PID_v1_changed_h
 #define LIBRARY_VERSION	1.2.1
 
 class PID
@@ -59,7 +59,7 @@ class PID
 	double GetKd();						  // where it's important to know what is actually 
 	int GetMode();						  //  inside the PID.
 	int GetDirection();					  //
-
+	unsigned long GetLastTime();          			  // Added by Tobias Liebmann 08/10/2017 
   private:
 	void Initialize();
 	
