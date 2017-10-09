@@ -1,14 +1,14 @@
-/**********************************************************************************************
+/*
  * Arduino PID Library - Version 1.2.1
  * by Brett Beauregard <br3ttb@gmail.com> brettbeauregard.com
  *
  * This Library is licensed under the MIT License
- **********************************************************************************************/
+ */
 
 #if ARDUINO >= 100
   #include "Arduino.h"
 #else
-  #include "WProgram.h"
+  //#include "WProgram.h"
 #endif
 
 #include "PID_changed_v1.h"
@@ -18,12 +18,14 @@
  *    reliable defaults, so we need to have the user set them.
  ***************************************************************************/
 PID::PID(double* Input, double* Output, double* Setpoint,
-        double Kp, double Ki, double Kd, int POn, int ControllerDirection)
+        double Kp, double Ki, double Kd, double enteredErrorLimit , unsigned long enteredMaxDeltaTime, int POn, int ControllerDirection)
 {
     myOutput = Output;
     myInput = Input;
     mySetpoint = Setpoint;
     inAuto = false;
+    errorLimit=enteredErrorLimit;
+    maxDeltaTime=enteredMaxDeltaTime;
 
     PID::SetOutputLimits(0, 255);				//default output limit corresponds to
 												//the arduino pwm limits
@@ -42,8 +44,8 @@ PID::PID(double* Input, double* Output, double* Setpoint,
  ***************************************************************************/
 
 PID::PID(double* Input, double* Output, double* Setpoint,
-        double Kp, double Ki, double Kd, int ControllerDirection)
-    :PID::PID(Input, Output, Setpoint, Kp, Ki, Kd, P_ON_E, ControllerDirection)
+        double Kp, double Ki, double Kd, double errorLimit, unsigned long maxDeltaTime,int ControllerDirection)
+    :PID::PID(Input, Output, Setpoint, Kp, Ki, Kd, errorLimit, maxDeltaTime, P_ON_E, ControllerDirection)
 {
 
 }
@@ -59,14 +61,24 @@ bool PID::Compute()
 {
    if(!inAuto) return false;
    unsigned long now = millis();
+   double input = *myInput;
    unsigned long timeChange = (now - lastTime);
-   if(timeChange>=SampleTime)
+   double error = *mySetpoint - input;
+   //if(timeChange>=SampleTime)
+   if(abs(error) > errorLimit && timeChange > SampleTime)
    {
       /*Compute all the working error variables*/
-      double input = *myInput;
-      double error = *mySetpoint - input;
       double dInput = (input - lastInput);
-      outputSum+= (ki * error);
+      if(timeChange >= maxDeltaTime)
+      {
+      	ui2=timeChange * exp(SampleTime - timeChange);
+      	ui1 = (ui2 - SampleTime)*errorLimit + SampleTime*error;
+      }
+      else
+      {
+      	ui1 = timeChange*error;
+      }	
+      outputSum+= (ki * ui1);
 
       /*Add Proportional on Measurement, if P_ON_M is specified*/
       if(!pOnE) outputSum-= kp * dInput;
@@ -80,16 +92,17 @@ bool PID::Compute()
       else output = 0;
 
       /*Compute Rest of PID Output*/
-      output += outputSum - kd * dInput;
+      ud = (ud - dInput)/((kd*timeChange/kp)+1);
+      output += outputSum + ud;
 
-	    if(output > outMax) output = outMax;
+	  if(output > outMax) output = outMax;
       else if(output < outMin) output = outMin;
-	    *myOutput = output;
+	  *myOutput = output;
 
       /*Remember some variables for next time*/
       lastInput = input;
       lastTime = now;
-	    return true;
+	  return true;
    }
    else return false;
 }
@@ -211,6 +224,17 @@ void PID::SetControllerDirection(int Direction)
    controllerDirection = Direction;
 }
 
+//This probably needs a little bit of fixing to ensure a smooth run of the controller.
+void PID::SetErrorLimit(double newErrorLimit)
+{
+	errorLimit=newErrorLimit; //Added by Tobias Liebmann, 10/09/2017
+}
+
+void PID::SetMaxDeltaTime(unsigned long newMaxDeltaTime)
+{
+	maxDeltaTime=newMaxDeltaTime;
+}
+
 /* Status Funcions*************************************************************
  * Just because you set the Kp=-1 doesn't mean it actually happened.  these
  * functions query the internal state of the PID.  they're here for display
@@ -222,4 +246,5 @@ double PID::GetKd(){ return  dispKd;}
 int PID::GetMode(){ return  inAuto ? AUTOMATIC : MANUAL;}
 int PID::GetDirection(){ return controllerDirection;}
 unsigned long PID::GetLastTime(){return lastTime;} //Added by Tobias Liebmann, 10/08/2017
-
+double PID::GetErrorLimit(){return errorLimit;} //Added by Tobias Liebmann, 10/09/2017
+unsigned long PID::GetMaxDeltaTime(){return maxDeltaTime;}//Added by Tobias Liebmann, 10/09/2017
